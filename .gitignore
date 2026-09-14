@@ -1,4 +1,4 @@
-﻿# Virtual environments
+# Virtual environments
 .venv/
 venv/
 env/
@@ -7,6 +7,9 @@ env/
 .env
 .env.*
 !.env.example
+
+# Local vector database
+.qdrant/
 
 # Python cache / compiled files
 __pycache__/
