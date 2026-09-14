@@ -9,6 +9,8 @@ dependencies = [
     "qdrant-client==1.19.0",
     "fastembed==0.8.0",
     "PyYAML==6.0.3",
+    "langgraph==1.2.11",
+    "langgraph-checkpoint-sqlite==3.1.1",
 ]
 
 [project.optional-dependencies]
