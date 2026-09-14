@@ -1,8 +1,9 @@
+import asyncio
 from typing import Protocol
 
 from app.graph.state import SentinelState
 from app.models.response import SourceReference
-from app.models.retrieval import RetrievalResult
+from app.models.retrieval import RetrievalResult, RetrievedChunk
 
 
 class RetrievalPort(Protocol):
@@ -26,8 +27,16 @@ class ProcedureAgentService:
     def __init__(
         self,
         retrieval_service: RetrievalPort,
+        *,
+        retry_evidence_limit: int = 10,
     ) -> None:
+        if retry_evidence_limit < 1:
+            raise ValueError(
+                "retry_evidence_limit must be at least 1."
+            )
+
         self.retrieval_service = retrieval_service
+        self.retry_evidence_limit = retry_evidence_limit
 
     async def run(
         self,
@@ -46,25 +55,33 @@ class ProcedureAgentService:
             and verification.status == "needs_more_evidence"
         )
 
-        retrieval_query = query
-
         if (
             is_retry
             and verification.missing_information
         ):
-            missing_information = "; ".join(
-                verification.missing_information
+            retrieval_queries = self._build_retry_queries(
+                query=query,
+                missing_information=verification.missing_information,
             )
 
-            retrieval_query = (
-                f"{query}\n\n"
-                "Información adicional que debe verificarse: "
-                f"{missing_information}"
+            results = await asyncio.gather(
+                *(
+                    self.retrieval_service.retrieve(
+                        retrieval_query
+                    )
+                    for retrieval_query in retrieval_queries
+                )
             )
 
-        result = await self.retrieval_service.retrieve(
-            retrieval_query
-        )
+            chunks = self._fuse_results(
+                results
+            )
+        else:
+            result = await self.retrieval_service.retrieve(
+                query
+            )
+
+            chunks = result.chunks
 
         sources = [
             SourceReference(
@@ -73,7 +90,7 @@ class ProcedureAgentService:
                 chunk_id=chunk.chunk_id,
                 score=chunk.score,
             )
-            for chunk in result.chunks
+            for chunk in chunks
         ]
 
         retry_count = state.get(
@@ -93,7 +110,7 @@ class ProcedureAgentService:
         ]
 
         update: dict[str, object] = {
-            "retrieved_documents": result.chunks,
+            "retrieved_documents": chunks,
             "sources": sources,
             "retry_count": retry_count,
             "agents_used": agents_used,
@@ -104,3 +121,87 @@ class ProcedureAgentService:
             update["incident_analysis"] = None
 
         return update
+
+    @staticmethod
+    def _build_retry_queries(
+        *,
+        query: str,
+        missing_information: list[str],
+    ) -> list[str]:
+        """Build distinct retrieval queries for a verification retry."""
+
+        queries = [query]
+
+        for item in missing_information:
+            normalized = item.strip()
+
+            if (
+                normalized
+                and normalized not in queries
+            ):
+                queries.append(
+                    normalized
+                )
+
+        return queries
+
+    def _fuse_results(
+        self,
+        results: list[RetrievalResult],
+    ) -> list[RetrievedChunk]:
+        """Fuse multi-query results using Reciprocal Rank Fusion."""
+
+        rrf_k = 60
+
+        fused_scores: dict[str, float] = {}
+        best_retrieval_scores: dict[str, float] = {}
+        chunks_by_id: dict[str, RetrievedChunk] = {}
+
+        for result in results:
+            for rank, chunk in enumerate(
+                result.chunks,
+                start=1,
+            ):
+                chunk_id = chunk.chunk_id
+
+                fused_scores[chunk_id] = (
+                    fused_scores.get(
+                        chunk_id,
+                        0.0,
+                    )
+                    + 1.0 / (rrf_k + rank)
+                )
+
+                previous_score = (
+                    best_retrieval_scores.get(
+                        chunk_id
+                    )
+                )
+
+                if (
+                    previous_score is None
+                    or chunk.score > previous_score
+                ):
+                    best_retrieval_scores[
+                        chunk_id
+                    ] = chunk.score
+
+                    chunks_by_id[
+                        chunk_id
+                    ] = chunk
+
+        ranked_chunk_ids = sorted(
+            fused_scores,
+            key=lambda chunk_id: (
+                -fused_scores[chunk_id],
+                -best_retrieval_scores[chunk_id],
+                chunk_id,
+            ),
+        )
+
+        return [
+            chunks_by_id[chunk_id]
+            for chunk_id in ranked_chunk_ids[
+                : self.retry_evidence_limit
+            ]
+        ]

@@ -25,6 +25,19 @@ class Settings(BaseSettings):
         "CRITICAL",
     ] = "INFO"
 
+    llm_provider: Literal[
+        "groq",
+        "openai",
+    ] = "groq"
+
+    groq_api_key: SecretStr | None = None
+
+    groq_model: str = Field(
+        default="openai/gpt-oss-20b",
+        min_length=1,
+        max_length=128,
+    )
+
     openai_api_key: SecretStr | None = None
 
     openai_model: str = Field(

@@ -1,17 +1,18 @@
 from functools import lru_cache
 
+from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
 from app.config.settings import Settings, get_settings
 
 
-class OpenAIConfigurationError(RuntimeError):
-    """Raised when OpenAI configuration is missing or invalid."""
+class LLMConfigurationError(RuntimeError):
+    """Raised when the configured LLM provider is missing credentials."""
 
 
-class OpenAIModelFactory:
-    """Create configured OpenAI chat and structured-output models."""
+class LLMModelFactory:
+    """Create provider-specific chat and structured-output models."""
 
     def __init__(
         self,
@@ -21,26 +22,17 @@ class OpenAIModelFactory:
 
     def create_chat_model(
         self,
-    ) -> ChatOpenAI:
-        """Create a ChatOpenAI instance from application settings."""
+    ):
+        """Create the configured chat model."""
 
-        api_key = self.settings.openai_api_key
+        if self.settings.llm_provider == "groq":
+            return self._create_groq_model()
 
-        if api_key is None:
-            raise OpenAIConfigurationError(
-                "OPENAI_API_KEY is required to create the OpenAI model."
-            )
+        if self.settings.llm_provider == "openai":
+            return self._create_openai_model()
 
-        secret_value = api_key.get_secret_value().strip()
-
-        if not secret_value:
-            raise OpenAIConfigurationError(
-                "OPENAI_API_KEY cannot be blank."
-            )
-
-        return ChatOpenAI(
-            model=self.settings.openai_model,
-            api_key=secret_value,
+        raise LLMConfigurationError(
+            f"Unsupported LLM provider: {self.settings.llm_provider}"
         )
 
     def create_structured_model(
@@ -57,11 +49,66 @@ class OpenAIModelFactory:
             strict=True,
         )
 
+    def _create_groq_model(
+        self,
+    ) -> ChatGroq:
+        api_key = self.settings.groq_api_key
+
+        if api_key is None:
+            raise LLMConfigurationError(
+                "GROQ_API_KEY is required when LLM_PROVIDER=groq."
+            )
+
+        secret_value = api_key.get_secret_value().strip()
+
+        if not secret_value:
+            raise LLMConfigurationError(
+                "GROQ_API_KEY cannot be blank."
+            )
+
+        return ChatGroq(
+            model=self.settings.groq_model,
+            api_key=secret_value,
+            temperature=0,
+        )
+
+    def _create_openai_model(
+        self,
+    ) -> ChatOpenAI:
+        api_key = self.settings.openai_api_key
+
+        if api_key is None:
+            raise LLMConfigurationError(
+                "OPENAI_API_KEY is required when LLM_PROVIDER=openai."
+            )
+
+        secret_value = api_key.get_secret_value().strip()
+
+        if not secret_value:
+            raise LLMConfigurationError(
+                "OPENAI_API_KEY cannot be blank."
+            )
+
+        return ChatOpenAI(
+            model=self.settings.openai_model,
+            api_key=secret_value,
+        )
+
+
+OpenAIConfigurationError = LLMConfigurationError
+OpenAIModelFactory = LLMModelFactory
+
 
 @lru_cache
-def get_openai_model_factory() -> OpenAIModelFactory:
-    """Return the cached OpenAI model factory."""
+def get_llm_model_factory() -> LLMModelFactory:
+    """Return the cached configured LLM model factory."""
 
-    return OpenAIModelFactory(
+    return LLMModelFactory(
         get_settings()
     )
+
+
+def get_openai_model_factory() -> LLMModelFactory:
+    """Backward-compatible alias for the model factory."""
+
+    return get_llm_model_factory()

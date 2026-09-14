@@ -68,6 +68,14 @@ class OpenAIVerifier:
                     "retrieval is unlikely to resolve the problem. "
                     "List unsupported claims and missing information "
                     "explicitly. Do not invent facts. "
+                    "Write explanation, unsupported_claims and "
+                    "missing_information in Spanish. "
+                    "When status is 'needs_more_evidence', phrase each "
+                    "missing_information item as a concise Spanish retrieval "
+                    "instruction using terminology suitable for searching "
+                    "physical security procedures. Prefer concrete concepts "
+                    "such as severidad, acceso no autorizado, escalamiento, "
+                    "áreas restringidas, autorización and supervisión. "
                     "Return the requested structured output only."
                 )
             ),

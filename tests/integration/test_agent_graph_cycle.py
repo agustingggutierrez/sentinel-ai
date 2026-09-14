@@ -163,7 +163,7 @@ async def test_graph_retries_when_verification_needs_more_evidence() -> None:
         state
     )
 
-    assert len(retrieval.queries) == 2
+    assert len(retrieval.queries) == 3
 
     assert retrieval.queries[0] == (
         "un tecnico ingreso a un area restringida"
@@ -171,7 +171,7 @@ async def test_graph_retries_when_verification_needs_more_evidence() -> None:
 
     assert (
         "Confirmar autorización vigente del técnico"
-        in retrieval.queries[1]
+        in retrieval.queries[2]
     )
 
     assert analyzer.call_count == 2

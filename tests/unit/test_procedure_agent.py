@@ -124,7 +124,7 @@ async def test_procedure_agent_registers_itself() -> None:
 
 
 @pytest.mark.asyncio
-async def test_retry_expands_retrieval_query() -> None:
+async def test_retry_uses_independent_retrieval_queries() -> None:
     retrieval = FakeRetrievalService()
 
     service = ProcedureAgentService(
@@ -138,11 +138,11 @@ async def test_retry_expands_retrieval_query() -> None:
 
     state["verification_result"] = VerificationResult(
         status="needs_more_evidence",
-        explanation="Falta información.",
+        explanation="Falta informacion.",
         unsupported_claims=[],
         missing_information=[
-            "Confirmar autorización del técnico",
-            "Confirmar responsable del sector",
+            "Buscar politica de severidad",
+            "Buscar procedimiento de escalamiento",
         ],
     )
 
@@ -150,24 +150,58 @@ async def test_retry_expands_retrieval_query() -> None:
         state
     )
 
-    query = retrieval.queries[0]
+    assert len(retrieval.queries) == 3
 
-    assert (
-        "persona en area restringida"
-        in query
-    )
-
-    assert (
-        "Confirmar autorización del técnico"
-        in query
-    )
-
-    assert (
-        "Confirmar responsable del sector"
-        in query
-    )
+    assert set(retrieval.queries) == {
+        "persona en area restringida",
+        "Buscar politica de severidad",
+        "Buscar procedimiento de escalamiento",
+    }
 
     assert update["retry_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_retry_deduplicates_retrieved_evidence() -> None:
+    retrieval = FakeRetrievalService()
+
+    service = ProcedureAgentService(
+        retrieval
+    )
+
+    state = create_initial_state(
+        "persona en area restringida",
+        thread_id="procedure-test",
+    )
+
+    state["verification_result"] = VerificationResult(
+        status="needs_more_evidence",
+        explanation="Falta informacion.",
+        unsupported_claims=[],
+        missing_information=[
+            "Buscar severidad",
+            "Buscar escalamiento",
+            "Buscar registro",
+        ],
+    )
+
+    update = await service.run(
+        state
+    )
+
+    retrieved_documents = update[
+        "retrieved_documents"
+    ]
+
+    sources = update["sources"]
+
+    assert len(retrieved_documents) == 1
+    assert len(sources) == 1
+
+    assert (
+        retrieved_documents[0].chunk_id
+        == "restricted-areas::001::test"
+    )
 
 
 @pytest.mark.asyncio
@@ -183,7 +217,7 @@ async def test_retry_clears_stale_analysis_and_verification() -> None:
 
     state["incident_analysis"] = IncidentAnalysis(
         severity="high",
-        summary="Análisis anterior.",
+        summary="Analisis anterior.",
         risks=[
             "Riesgo previo."
         ],
@@ -208,3 +242,14 @@ async def test_retry_clears_stale_analysis_and_verification() -> None:
     assert update["incident_analysis"] is None
     assert update["verification_result"] is None
     assert update["retry_count"] == 1
+
+
+def test_procedure_agent_rejects_invalid_retry_limit() -> None:
+    with pytest.raises(
+        ValueError,
+        match="retry_evidence_limit must be at least 1",
+    ):
+        ProcedureAgentService(
+            FakeRetrievalService(),
+            retry_evidence_limit=0,
+        )

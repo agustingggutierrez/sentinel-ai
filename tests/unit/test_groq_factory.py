@@ -4,8 +4,8 @@ from pydantic import BaseModel, SecretStr
 import app.services.llm as llm_module
 from app.config.settings import Settings
 from app.services.llm import (
-    OpenAIConfigurationError,
-    OpenAIModelFactory,
+    LLMConfigurationError,
+    LLMModelFactory,
 )
 
 
@@ -13,14 +13,14 @@ class ExampleStructuredOutput(BaseModel):
     result: str
 
 
-class FakeChatOpenAI:
+class FakeChatGroq:
     last_kwargs: dict[str, object] | None = None
 
     def __init__(
         self,
         **kwargs: object,
     ) -> None:
-        FakeChatOpenAI.last_kwargs = kwargs
+        FakeChatGroq.last_kwargs = kwargs
 
     def with_structured_output(
         self,
@@ -36,97 +36,102 @@ class FakeChatOpenAI:
         }
 
 
-def test_factory_rejects_missing_api_key() -> None:
+def test_groq_factory_rejects_missing_api_key() -> None:
     settings = Settings(
         _env_file=None,
-        llm_provider="openai",
-        openai_api_key=None,
+        llm_provider="groq",
+        groq_api_key=None,
     )
 
-    factory = OpenAIModelFactory(
+    factory = LLMModelFactory(
         settings
     )
 
     with pytest.raises(
-        OpenAIConfigurationError,
-        match="OPENAI_API_KEY is required",
+        LLMConfigurationError,
+        match="GROQ_API_KEY is required",
     ):
         factory.create_chat_model()
 
 
-def test_factory_rejects_blank_api_key() -> None:
+def test_groq_factory_rejects_blank_api_key() -> None:
     settings = Settings(
         _env_file=None,
-        llm_provider="openai",
-        openai_api_key=SecretStr("   "),
+        llm_provider="groq",
+        groq_api_key=SecretStr("   "),
     )
 
-    factory = OpenAIModelFactory(
+    factory = LLMModelFactory(
         settings
     )
 
     with pytest.raises(
-        OpenAIConfigurationError,
+        LLMConfigurationError,
         match="cannot be blank",
     ):
         factory.create_chat_model()
 
 
-def test_factory_uses_configured_model_and_secret(
+def test_groq_factory_uses_configured_model_and_secret(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         llm_module,
-        "ChatOpenAI",
-        FakeChatOpenAI,
+        "ChatGroq",
+        FakeChatGroq,
     )
 
     settings = Settings(
         _env_file=None,
-        llm_provider="openai",
-        openai_api_key=SecretStr(
-            "sk-test-secret"
+        llm_provider="groq",
+        groq_api_key=SecretStr(
+            "gsk-test-secret"
         ),
-        openai_model="gpt-5.6-luna",
+        groq_model="openai/gpt-oss-20b",
     )
 
-    factory = OpenAIModelFactory(
+    factory = LLMModelFactory(
         settings
     )
 
     factory.create_chat_model()
 
-    assert FakeChatOpenAI.last_kwargs is not None
+    assert FakeChatGroq.last_kwargs is not None
 
     assert (
-        FakeChatOpenAI.last_kwargs["model"]
-        == "gpt-5.6-luna"
+        FakeChatGroq.last_kwargs["model"]
+        == "openai/gpt-oss-20b"
     )
 
     assert (
-        FakeChatOpenAI.last_kwargs["api_key"]
-        == "sk-test-secret"
+        FakeChatGroq.last_kwargs["api_key"]
+        == "gsk-test-secret"
+    )
+
+    assert (
+        FakeChatGroq.last_kwargs["temperature"]
+        == 0
     )
 
 
-def test_factory_creates_strict_structured_output(
+def test_groq_factory_creates_strict_structured_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
         llm_module,
-        "ChatOpenAI",
-        FakeChatOpenAI,
+        "ChatGroq",
+        FakeChatGroq,
     )
 
     settings = Settings(
         _env_file=None,
-        llm_provider="openai",
-        openai_api_key=SecretStr(
-            "sk-test-secret"
+        llm_provider="groq",
+        groq_api_key=SecretStr(
+            "gsk-test-secret"
         ),
     )
 
-    factory = OpenAIModelFactory(
+    factory = LLMModelFactory(
         settings
     )
 
