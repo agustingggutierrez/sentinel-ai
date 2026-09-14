@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from app.models.chunk import DocumentChunk
 from app.models.document import ParsedDocument
 
-
 MAX_CHUNK_WORDS = 90
 CHUNK_OVERLAP_WORDS = 15
 

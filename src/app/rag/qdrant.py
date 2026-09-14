@@ -2,7 +2,6 @@ from qdrant_client import AsyncQdrantClient, models
 
 from app.config.settings import Settings, get_settings
 
-
 DENSE_VECTOR_NAME = "dense"
 SPARSE_VECTOR_NAME = "sparse"
 COLBERT_VECTOR_NAME = "colbert"

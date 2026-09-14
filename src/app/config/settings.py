@@ -5,7 +5,6 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -71,6 +70,11 @@ class Settings(BaseSettings):
         ge=1,
         le=50,
     )
+
+    retrieval_strategy: Literal[
+        "rrf",
+        "colbert",
+    ] = "rrf"
 
     ingestion_batch_size: int = Field(
         default=8,
