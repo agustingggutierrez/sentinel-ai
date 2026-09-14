@@ -72,6 +72,12 @@ class Settings(BaseSettings):
         le=50,
     )
 
+    ingestion_batch_size: int = Field(
+        default=8,
+        ge=1,
+        le=64,
+    )
+
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
