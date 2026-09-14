@@ -1,5 +1,17 @@
+from typing import Protocol
+
 from app.graph.state import SentinelState
 from app.models.agents import SupervisorDecision
+
+
+class SupervisorDecisionPort(Protocol):
+    """Async supervisor interface required by the LangGraph workflow."""
+
+    async def decide(
+        self,
+        state: SentinelState,
+    ) -> SupervisorDecision:
+        """Choose the next graph node from the current state."""
 
 
 class SupervisorService:
@@ -94,7 +106,7 @@ class SupervisorService:
 async def supervisor_node(
     state: SentinelState,
 ) -> dict[str, object]:
-    """LangGraph node that stores the supervisor routing decision."""
+    """Run the deterministic fallback Supervisor node."""
 
     decision = SupervisorService().decide(
         state

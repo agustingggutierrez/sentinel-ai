@@ -5,7 +5,10 @@ from langgraph.graph import END, START, StateGraph
 from app.agents.incident import IncidentAnalystService
 from app.agents.procedure import ProcedureAgentService
 from app.agents.response import ResponseComposerService
-from app.agents.supervisor import supervisor_node
+from app.agents.supervisor import (
+    SupervisorDecisionPort,
+    supervisor_node,
+)
 from app.agents.verification import VerificationAgentService
 from app.graph.state import SentinelState
 from app.models.agents import AgentRoute
@@ -34,9 +37,36 @@ def build_sentinel_graph(
     incident_analyst: IncidentAnalystService,
     verification_agent: VerificationAgentService,
     response_composer: ResponseComposerService,
+    supervisor: SupervisorDecisionPort | None = None,
     checkpointer: Any | None = None,
 ) -> Any:
     """Build and compile the SentinelAI multi-agent LangGraph."""
+
+    async def supervisor_graph_node(
+        state: SentinelState,
+    ) -> dict[str, object]:
+        if supervisor is None:
+            return await supervisor_node(
+                state
+            )
+
+        decision = await supervisor.decide(
+            state
+        )
+
+        agents_used = [
+            *state.get(
+                "agents_used",
+                [],
+            ),
+            "supervisor",
+        ]
+
+        return {
+            "route": decision.next_node,
+            "supervisor_reason": decision.reason,
+            "agents_used": agents_used,
+        }
 
     async def procedure_node(
         state: SentinelState,
@@ -72,7 +102,7 @@ def build_sentinel_graph(
 
     builder.add_node(
         "supervisor",
-        supervisor_node,
+        supervisor_graph_node,
     )
 
     builder.add_node(

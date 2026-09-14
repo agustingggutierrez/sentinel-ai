@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -24,6 +24,14 @@ class Settings(BaseSettings):
         "ERROR",
         "CRITICAL",
     ] = "INFO"
+
+    openai_api_key: SecretStr | None = None
+
+    openai_model: str = Field(
+        default="gpt-5.6-luna",
+        min_length=1,
+        max_length=128,
+    )
 
     qdrant_mode: Literal["local", "server"] = "local"
 
