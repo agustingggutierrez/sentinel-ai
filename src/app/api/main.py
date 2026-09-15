@@ -1,12 +1,20 @@
-﻿from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from time import perf_counter
 
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
+from app.api.errors import (
+    RuntimeUnavailableError,
+    SentinelAPIError,
+    WorkflowExecutionError,
+    WorkflowIncompleteError,
+)
 from app.bootstrap import SentinelRuntime, create_sentinel_runtime
 from app.config.settings import get_settings
 from app.graph.state import create_initial_state
+from app.models.errors import ErrorDetail, ErrorResponse
 from app.models.query import QueryRequest
 from app.models.response import QueryMetadata, QueryResponse
 from app.observability.tracing import (
@@ -39,6 +47,30 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(SentinelAPIError)
+async def sentinel_api_error_handler(
+    _request: Request,
+    exc: SentinelAPIError,
+) -> JSONResponse:
+    """Convert controlled SentinelAI failures into stable API responses."""
+
+    payload = ErrorResponse(
+        error=ErrorDetail(
+            code=exc.error_code,
+            message=exc.public_message,
+            thread_id=exc.thread_id,
+            trace_id=exc.trace_id,
+        )
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=payload.model_dump(
+            mode="json"
+        ),
+    )
+
+
 def get_runtime(
     request: Request,
 ) -> SentinelRuntime:
@@ -51,9 +83,7 @@ def get_runtime(
     )
 
     if runtime is None:
-        raise RuntimeError(
-            "SentinelAI runtime is not initialized."
-        )
+        raise RuntimeUnavailableError()
 
     return runtime
 
@@ -74,6 +104,16 @@ async def health() -> dict[str, str]:
 @app.post(
     "/v1/query",
     response_model=QueryResponse,
+    responses={
+        500: {
+            "model": ErrorResponse,
+            "description": "Controlled SentinelAI workflow failure.",
+        },
+        503: {
+            "model": ErrorResponse,
+            "description": "SentinelAI runtime unavailable.",
+        },
+    },
     tags=["queries"],
 )
 async def query_sentinel(
@@ -104,15 +144,22 @@ async def query_sentinel(
 
     started_at = perf_counter()
 
-    with sentinel_tracing_context(
-        settings=runtime.settings,
-        thread_id=thread_id,
-    ):
-        result = await invoke_traced_graph(
-            graph=runtime.graph,
-            initial_state=initial_state,
-            config=config,
-        )
+    try:
+        with sentinel_tracing_context(
+            settings=runtime.settings,
+            thread_id=thread_id,
+        ):
+            result = await invoke_traced_graph(
+                graph=runtime.graph,
+                initial_state=initial_state,
+                config=config,
+            )
+    except SentinelAPIError:
+        raise
+    except Exception as exc:
+        raise WorkflowExecutionError(
+            thread_id=thread_id,
+        ) from exc
 
     duration_ms = (
         perf_counter() - started_at
@@ -123,8 +170,11 @@ async def query_sentinel(
     )
 
     if not final_answer:
-        raise RuntimeError(
-            "SentinelAI graph completed without a final answer."
+        raise WorkflowIncompleteError(
+            thread_id=thread_id,
+            trace_id=result.get(
+                "trace_id"
+            ),
         )
 
     verification = result.get(

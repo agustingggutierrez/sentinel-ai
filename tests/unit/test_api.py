@@ -156,3 +156,162 @@ def test_query_endpoint_rejects_short_query() -> None:
         )
 
     assert response.status_code == 422
+
+
+class FailingGraph:
+    async def ainvoke(
+        self,
+        state,
+        config,
+    ):
+        raise RuntimeError(
+            "provider secret failure"
+        )
+
+
+class IncompleteGraph:
+    async def ainvoke(
+        self,
+        state,
+        config,
+    ):
+        return {
+            "thread_id": state["thread_id"],
+            "trace_id": "trace-incomplete-001",
+        }
+
+
+def test_query_endpoint_returns_structured_workflow_error(
+    monkeypatch,
+) -> None:
+    runtime = SimpleNamespace(
+        graph=FailingGraph(),
+        settings=Settings(
+            _env_file=None,
+            graph_recursion_limit=40,
+            langsmith_tracing=False,
+        ),
+    )
+
+    @asynccontextmanager
+    async def fake_runtime(
+        settings=None,
+    ):
+        yield runtime
+
+    monkeypatch.setattr(
+        api_main,
+        "create_sentinel_runtime",
+        fake_runtime,
+    )
+
+    with TestClient(api_main.app) as client:
+        response = client.post(
+            "/v1/query",
+            json={
+                "query": "Persona sin autorizacion.",
+                "thread_id": "workflow-error-thread",
+            },
+        )
+
+    assert response.status_code == 500
+
+    body = response.json()
+
+    assert body == {
+        "error": {
+            "code": "workflow_failed",
+            "message": (
+                "SentinelAI workflow could not be completed."
+            ),
+            "thread_id": "workflow-error-thread",
+            "trace_id": None,
+        }
+    }
+
+    assert "provider secret failure" not in response.text
+
+
+def test_query_endpoint_rejects_incomplete_workflow(
+    monkeypatch,
+) -> None:
+    runtime = SimpleNamespace(
+        graph=IncompleteGraph(),
+        settings=Settings(
+            _env_file=None,
+            graph_recursion_limit=40,
+            langsmith_tracing=False,
+        ),
+    )
+
+    @asynccontextmanager
+    async def fake_runtime(
+        settings=None,
+    ):
+        yield runtime
+
+    monkeypatch.setattr(
+        api_main,
+        "create_sentinel_runtime",
+        fake_runtime,
+    )
+
+    with TestClient(api_main.app) as client:
+        response = client.post(
+            "/v1/query",
+            json={
+                "query": "Consulta valida sin respuesta final.",
+                "thread_id": "incomplete-thread",
+            },
+        )
+
+    assert response.status_code == 500
+
+    assert response.json() == {
+        "error": {
+            "code": "workflow_incomplete",
+            "message": (
+                "SentinelAI workflow completed "
+                "without a final answer."
+            ),
+            "thread_id": "incomplete-thread",
+            "trace_id": "trace-incomplete-001",
+        }
+    }
+
+
+def test_query_endpoint_returns_runtime_unavailable(
+    monkeypatch,
+) -> None:
+    @asynccontextmanager
+    async def unavailable_runtime(
+        settings=None,
+    ):
+        yield None
+
+    monkeypatch.setattr(
+        api_main,
+        "create_sentinel_runtime",
+        unavailable_runtime,
+    )
+
+    with TestClient(api_main.app) as client:
+        response = client.post(
+            "/v1/query",
+            json={
+                "query": "Consulta durante runtime no disponible.",
+            },
+        )
+
+    assert response.status_code == 503
+
+    assert response.json() == {
+        "error": {
+            "code": "runtime_unavailable",
+            "message": (
+                "SentinelAI runtime is temporarily unavailable."
+            ),
+            "thread_id": None,
+            "trace_id": None,
+        }
+    }
