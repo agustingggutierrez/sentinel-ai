@@ -8,6 +8,10 @@ from fastembed import (
     SparseTextEmbedding,
     TextEmbedding,
 )
+from fastembed.common.model_description import (
+    ModelSource,
+    PoolingType,
+)
 
 from app.config.settings import Settings, get_settings
 
@@ -20,6 +24,49 @@ class SparseEmbeddingVector:
     values: list[float]
 
 
+_LEGACY_DENSE_MODEL = (
+    "sentence-transformers/"
+    "paraphrase-multilingual-MiniLM-L12-v2"
+)
+
+_SENTINEL_DENSE_MODEL_ALIAS = (
+    "sentinel/"
+    "paraphrase-multilingual-MiniLM-L12-v2"
+)
+
+
+def _ensure_dense_model_alias() -> None:
+    """Register a warning-free alias matching FastEmbed 0.8.0 behavior."""
+
+    supported_models = {
+        model["model"]
+        for model in TextEmbedding.list_supported_models()
+    }
+
+    if _SENTINEL_DENSE_MODEL_ALIAS in supported_models:
+        return
+
+    TextEmbedding.add_custom_model(
+        model=_SENTINEL_DENSE_MODEL_ALIAS,
+        pooling=PoolingType.MEAN,
+        normalization=False,
+        sources=ModelSource(
+            hf=(
+                "qdrant/"
+                "paraphrase-multilingual-MiniLM-L12-v2-onnx-Q"
+            ),
+        ),
+        dim=384,
+        model_file="model_optimized.onnx",
+        description=(
+            "SentinelAI compatibility alias preserving "
+            "FastEmbed 0.8.0 mean pooling behavior."
+        ),
+        license="apache-2.0",
+        size_in_gb=0.22,
+    )
+
+
 class EmbeddingService:
     """Centralized dense, sparse and late-interaction embedding service."""
 
@@ -30,8 +77,14 @@ class EmbeddingService:
     def dense_model(self) -> TextEmbedding:
         """Load and cache the configured dense embedding model."""
 
+        model_name = self.settings.dense_embedding_model
+
+        if model_name == _LEGACY_DENSE_MODEL:
+            _ensure_dense_model_alias()
+            model_name = _SENTINEL_DENSE_MODEL_ALIAS
+
         return TextEmbedding(
-            model_name=self.settings.dense_embedding_model,
+            model_name=model_name,
         )
 
     @cached_property
