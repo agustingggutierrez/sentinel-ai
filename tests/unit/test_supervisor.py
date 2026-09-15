@@ -133,7 +133,7 @@ def test_more_evidence_creates_cycle() -> None:
     assert decision.next_node == "procedure_agent"
 
 
-def test_retry_limit_routes_to_response() -> None:
+def test_retry_limit_routes_to_safe_response() -> None:
     state = create_initial_state(
         "persona sin autorizacion",
         thread_id="test-thread",
@@ -154,7 +154,29 @@ def test_retry_limit_routes_to_response() -> None:
         state
     )
 
-    assert decision.next_node == "response_composer"
+    assert decision.next_node == "safe_response"
+
+
+def test_failed_verification_routes_to_safe_response() -> None:
+    state = create_initial_state(
+        "persona sin autorizacion",
+        thread_id="test-thread",
+    )
+
+    state["verification_result"] = VerificationResult(
+        status="failed",
+        explanation="La evidencia no respalda el analisis.",
+        unsupported_claims=[
+            "Severidad no confirmada."
+        ],
+        missing_information=[],
+    )
+
+    decision = SupervisorService().decide(
+        state
+    )
+
+    assert decision.next_node == "safe_response"
 
 
 @pytest.mark.asyncio

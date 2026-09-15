@@ -56,18 +56,19 @@ class SupervisorService:
 
             if verification.status == "failed":
                 return SupervisorDecision(
-                    next_node="response_composer",
+                    next_node="safe_response",
                     reason=(
-                        "Verification failed; compose a cautious "
-                        "response with the available evidence."
+                        "Verification failed, so only a safe "
+                        "evidence-limited response may be returned."
                     ),
                 )
 
             if retry_count >= 2:
                 return SupervisorDecision(
-                    next_node="response_composer",
+                    next_node="safe_response",
                     reason=(
-                        "Maximum evidence retries reached."
+                        "Maximum evidence retries reached without "
+                        "sufficient verified support."
                     ),
                 )
 

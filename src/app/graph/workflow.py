@@ -1,5 +1,6 @@
 from typing import Any
 
+from langchain_core.messages import AIMessage
 from langgraph.graph import END, START, StateGraph
 
 from app.agents.incident import IncidentAnalystService
@@ -96,6 +97,85 @@ def build_sentinel_graph(
             state
         )
 
+    async def safe_response_node(
+        state: SentinelState,
+    ) -> dict[str, object]:
+        verification = state.get(
+            "verification_result"
+        )
+
+        if verification is None:
+            raise RuntimeError(
+                "Safe response requires a verification result."
+            )
+
+        explanation = verification.explanation.strip()
+
+        unsupported_claims = [
+            claim.strip()
+            for claim in verification.unsupported_claims
+            if claim.strip()
+        ]
+
+        missing_information = [
+            item.strip()
+            for item in verification.missing_information
+            if item.strip()
+        ]
+
+        sections = [
+            (
+                "No hay evidencia suficiente para emitir una "
+                "conclusion operativa plenamente verificada."
+            ),
+            f"Resultado de verificacion: {explanation}",
+        ]
+
+        if unsupported_claims:
+            sections.append(
+                "Afirmaciones que no deben asumirse como confirmadas:\n"
+                + "\n".join(
+                    f"- {claim}"
+                    for claim in unsupported_claims
+                )
+            )
+
+        if missing_information:
+            sections.append(
+                "Informacion adicional necesaria:\n"
+                + "\n".join(
+                    f"- {item}"
+                    for item in missing_information
+                )
+            )
+
+        sections.append(
+            "La decision operativa final debe quedar en manos del "
+            "personal responsable y de los procedimientos vigentes."
+        )
+
+        answer = "\n\n".join(
+            sections
+        )
+
+        agents_used = [
+            *state.get(
+                "agents_used",
+                [],
+            ),
+            "safe_response",
+        ]
+
+        return {
+            "final_answer": answer,
+            "messages": [
+                AIMessage(
+                    content=answer
+                )
+            ],
+            "agents_used": agents_used,
+        }
+
     builder = StateGraph(
         SentinelState
     )
@@ -125,6 +205,11 @@ def build_sentinel_graph(
         response_node,
     )
 
+    builder.add_node(
+        "safe_response",
+        safe_response_node,
+    )
+
     builder.add_edge(
         START,
         "supervisor",
@@ -138,6 +223,7 @@ def build_sentinel_graph(
             "incident_analyst": "incident_analyst",
             "verification_agent": "verification_agent",
             "response_composer": "response_composer",
+            "safe_response": "safe_response",
             "finish": END,
         },
     )
@@ -159,6 +245,11 @@ def build_sentinel_graph(
 
     builder.add_edge(
         "response_composer",
+        END,
+    )
+
+    builder.add_edge(
+        "safe_response",
         END,
     )
 

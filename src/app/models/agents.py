@@ -7,6 +7,7 @@ AgentRoute = Literal[
     "incident_analyst",
     "verification_agent",
     "response_composer",
+    "safe_response",
     "finish",
 ]
 
