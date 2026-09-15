@@ -74,3 +74,18 @@ def test_checkpoint_storage_path_preserves_absolute_path(
     )
 
     assert settings.checkpoint_storage_path == database_path
+
+def test_default_graph_recursion_limit_is_40() -> None:
+    settings = Settings(
+        _env_file=None,
+    )
+
+    assert settings.graph_recursion_limit == 40
+
+
+def test_graph_recursion_limit_cannot_be_too_low() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            graph_recursion_limit=9,
+        )
