@@ -146,7 +146,30 @@ def test_query_endpoint_generates_thread_id(
     assert graph.state["thread_id"]
 
 
-def test_query_endpoint_rejects_short_query() -> None:
+def test_query_endpoint_rejects_short_query(
+    monkeypatch,
+) -> None:
+    runtime = SimpleNamespace(
+        graph=FakeGraph(),
+        settings=Settings(
+            _env_file=None,
+            graph_recursion_limit=40,
+            langsmith_tracing=False,
+        ),
+    )
+
+    @asynccontextmanager
+    async def fake_runtime(
+        settings=None,
+    ):
+        yield runtime
+
+    monkeypatch.setattr(
+        api_main,
+        "create_sentinel_runtime",
+        fake_runtime,
+    )
+
     with TestClient(api_main.app) as client:
         response = client.post(
             "/v1/query",
