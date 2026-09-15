@@ -252,3 +252,71 @@ async def test_supervisor_rejects_unexpected_model_output() -> None:
         await supervisor.decide(
             state
         )
+
+@pytest.mark.asyncio
+async def test_supervisor_prompt_includes_safe_response_routing() -> None:
+    model = FakeStructuredModel(
+        SupervisorDecision(
+            next_node="safe_response",
+            reason="Verification failed.",
+        )
+    )
+
+    supervisor = OpenAISupervisor(
+        FakeFactory(
+            model
+        )
+    )
+
+    state = create_initial_state(
+        "consulta valida",
+        thread_id="supervisor-safe-routing-test",
+    )
+
+    state["verification_result"] = VerificationResult(
+        status="failed",
+        explanation="La evidencia no respalda el analisis.",
+        unsupported_claims=[
+            "Severidad no confirmada.",
+        ],
+        missing_information=[],
+    )
+
+    await supervisor.decide(
+        state
+    )
+
+    messages = model.inputs[0]
+
+    assert isinstance(
+        messages,
+        list,
+    )
+
+    system_message = messages[0]
+
+    assert isinstance(
+        system_message,
+        SystemMessage,
+    )
+
+    content = str(
+        system_message.content
+    )
+
+    assert (
+        "Use response_composer only when verification status is "
+        "'passed'"
+        in content
+    )
+
+    assert (
+        "Use safe_response when verification status is 'failed'"
+        in content
+    )
+
+    assert (
+        "use safe_response when verification still requires "
+        "more evidence but the retry limit has been reached"
+        in content
+    )
