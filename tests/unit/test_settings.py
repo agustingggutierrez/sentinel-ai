@@ -89,3 +89,18 @@ def test_graph_recursion_limit_cannot_be_too_low() -> None:
             _env_file=None,
             graph_recursion_limit=9,
         )
+
+def test_langsmith_tracing_is_disabled_by_default() -> None:
+    settings = Settings(
+        _env_file=None,
+    )
+
+    assert settings.langsmith_tracing is False
+
+
+def test_default_langsmith_project_is_sentinel_ai() -> None:
+    settings = Settings(
+        _env_file=None,
+    )
+
+    assert settings.langsmith_project == "sentinel-ai"

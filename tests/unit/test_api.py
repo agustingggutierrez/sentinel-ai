@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 import app.api.main as api_main
+from app.config.settings import Settings
 from app.models.response import SourceReference
 
 
@@ -55,8 +56,10 @@ def test_query_endpoint_returns_typed_response(
 
     runtime = SimpleNamespace(
         graph=graph,
-        settings=SimpleNamespace(
+        settings=Settings(
+            _env_file=None,
             graph_recursion_limit=40,
+            langsmith_tracing=False,
         ),
     )
 
@@ -111,8 +114,10 @@ def test_query_endpoint_generates_thread_id(
 
     runtime = SimpleNamespace(
         graph=graph,
-        settings=SimpleNamespace(
+        settings=Settings(
+            _env_file=None,
             graph_recursion_limit=40,
+            langsmith_tracing=False,
         ),
     )
 

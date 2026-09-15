@@ -9,6 +9,10 @@ from app.config.settings import get_settings
 from app.graph.state import create_initial_state
 from app.models.query import QueryRequest
 from app.models.response import QueryMetadata, QueryResponse
+from app.observability.tracing import (
+    invoke_traced_graph,
+    sentinel_tracing_context,
+)
 
 
 @asynccontextmanager
@@ -100,10 +104,15 @@ async def query_sentinel(
 
     started_at = perf_counter()
 
-    result = await runtime.graph.ainvoke(
-        initial_state,
-        config=config,
-    )
+    with sentinel_tracing_context(
+        settings=runtime.settings,
+        thread_id=thread_id,
+    ):
+        result = await invoke_traced_graph(
+            graph=runtime.graph,
+            initial_state=initial_state,
+            config=config,
+        )
 
     duration_ms = (
         perf_counter() - started_at

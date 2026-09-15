@@ -44,6 +44,16 @@ class Settings(BaseSettings):
         max_length=128,
     )
 
+
+    langsmith_tracing: bool = False
+
+    langsmith_api_key: SecretStr | None = None
+
+    langsmith_project: str = Field(
+        default="sentinel-ai",
+        min_length=1,
+        max_length=128,
+    )
     openai_api_key: SecretStr | None = None
 
     openai_model: str = Field(
