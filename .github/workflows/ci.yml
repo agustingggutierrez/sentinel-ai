@@ -38,7 +38,7 @@ jobs:
         run: python -m pytest -q
 
   docker:
-    name: Docker build
+    name: Docker build and runtime smoke test
     runs-on: ubuntu-latest
 
     steps:
@@ -47,3 +47,43 @@ jobs:
 
       - name: Build SentinelAI image
         run: docker build --tag sentinel-ai:ci .
+
+      - name: Start SentinelAI container
+        run: |
+          docker run --detach \
+            --name sentinel-ai-ci \
+            --publish 8000:8000 \
+            --env GROQ_API_KEY=test-key \
+            --env LANGSMITH_TRACING=false \
+            sentinel-ai:ci
+
+      - name: Wait for health endpoint
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8000/health; then
+              echo
+              echo "SentinelAI health check passed."
+              exit 0
+            fi
+
+            if ! docker inspect --format='{{.State.Running}}' sentinel-ai-ci | grep -q true; then
+              echo "Container stopped before becoming healthy."
+              docker logs sentinel-ai-ci
+              exit 1
+            fi
+
+            echo "Waiting for SentinelAI... attempt ${attempt}/60"
+            sleep 5
+          done
+
+          echo "SentinelAI did not become healthy in time."
+          docker logs sentinel-ai-ci
+          exit 1
+
+      - name: Show container logs
+        if: always()
+        run: docker logs sentinel-ai-ci
+
+      - name: Stop container
+        if: always()
+        run: docker rm --force sentinel-ai-ci
