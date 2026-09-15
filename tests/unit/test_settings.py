@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -47,3 +49,28 @@ def test_ingestion_batch_size_must_be_positive() -> None:
             _env_file=None,
             ingestion_batch_size=0,
         )
+
+def test_checkpoint_storage_path_resolves_relative_path() -> None:
+    settings = Settings(
+        _env_file=None,
+        checkpoint_db_path=Path(".sentinel/test-checkpoints.sqlite"),
+    )
+
+    assert settings.checkpoint_storage_path.is_absolute()
+    assert settings.checkpoint_storage_path.name == "test-checkpoints.sqlite"
+
+
+def test_checkpoint_storage_path_preserves_absolute_path(
+    tmp_path: Path,
+) -> None:
+    database_path = (
+        tmp_path
+        / "custom-checkpoints.sqlite"
+    )
+
+    settings = Settings(
+        _env_file=None,
+        checkpoint_db_path=database_path,
+    )
+
+    assert settings.checkpoint_storage_path == database_path

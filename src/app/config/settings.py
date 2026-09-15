@@ -50,6 +50,10 @@ class Settings(BaseSettings):
 
     qdrant_local_path: Path = Path(".qdrant")
 
+    checkpoint_db_path: Path = Path(
+        ".sentinel/checkpoints.sqlite"
+    )
+
     qdrant_url: str = "http://localhost:6333"
 
     qdrant_api_key: str | None = None
@@ -131,6 +135,16 @@ class Settings(BaseSettings):
 
         return PROJECT_ROOT / self.qdrant_local_path
 
+
+
+    @property
+    def checkpoint_storage_path(self) -> Path:
+        """Return the absolute LangGraph checkpoint database path."""
+
+        if self.checkpoint_db_path.is_absolute():
+            return self.checkpoint_db_path
+
+        return PROJECT_ROOT / self.checkpoint_db_path
 
 @lru_cache
 def get_settings() -> Settings:
