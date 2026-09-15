@@ -303,8 +303,8 @@ En la máquina utilizada durante el desarrollo no se encontraba instalado Docker
 Por lo tanto:
 
 ```text
-Configuración Docker: validada estáticamente
-Ejecución Docker real: pendiente
+Configuración Docker: validada en CI
+Ejecución Docker real: validada mediante smoke test
 ```
 
 No se presenta la ejecución del contenedor como evidencia completada hasta realizar una prueba real en un entorno compatible.
@@ -341,5 +341,5 @@ Ruff ............................ VALIDADO
 RAG ingestion ................... VALIDADO
 Retrieval evaluation ............ VALIDADO
 Docker configuration ............ IMPLEMENTADA
-Docker runtime .................. PENDIENTE
+Docker runtime .................. VALIDADO EN CI
 ```

@@ -930,4 +930,4 @@ Ruff ........................ OK
 Tests ....................... 119 passed
 ```
 
-La configuración Docker se encuentra implementada, pero su ejecución real permanece pendiente de validación en una máquina con Docker disponible.
+La configuración Docker fue validada mediante GitHub Actions en una máquina Ubuntu limpia. El workflow construye la imagen, inicia un contenedor real y comprueba exitosamente el endpoint /health.

@@ -787,7 +787,7 @@ Se utilizan volúmenes persistentes para:
 - Qdrant;
 - checkpoints SQLite.
 
-> La configuración Docker se encuentra implementada y validada estáticamente. La máquina utilizada durante el desarrollo no disponía de Docker instalado, por lo que la ejecución real del contenedor debe validarse posteriormente en un entorno compatible.
+> La configuración Docker fue validada mediante GitHub Actions en una máquina Ubuntu limpia. El CI construye la imagen, inicia un contenedor real y verifica exitosamente el endpoint /health antes de finalizar.
 
 ---
 
@@ -974,7 +974,7 @@ Logging JSON ................ OK
 Ruff ........................ All checks passed!
 Tests ....................... 119 passed
 Docker configuration ........ Implementada
-Docker runtime .............. Pendiente de validar
+Docker runtime .............. VALIDADO EN CI
 ```
 
 ---
