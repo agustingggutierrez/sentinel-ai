@@ -3,7 +3,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.models.agents import IncidentAnalysis
 from app.models.retrieval import RetrievedChunk
-from app.services.incident_llm import OpenAIIncidentAnalyzer
+from app.services.incident_llm import LLMIncidentAnalyzer
 
 
 def make_chunk() -> RetrievedChunk:
@@ -78,7 +78,7 @@ async def test_analyzer_requests_incident_analysis_schema() -> None:
         model
     )
 
-    OpenAIIncidentAnalyzer(
+    LLMIncidentAnalyzer(
         factory
     )
 
@@ -89,7 +89,7 @@ async def test_analyzer_requests_incident_analysis_schema() -> None:
 
 @pytest.mark.asyncio
 async def test_analyzer_returns_structured_incident_analysis() -> None:
-    analyzer = OpenAIIncidentAnalyzer(
+    analyzer = LLMIncidentAnalyzer(
         FakeFactory(
             FakeStructuredModel(
                 make_analysis()
@@ -118,7 +118,7 @@ async def test_analyzer_sends_query_and_evidence_to_model() -> None:
         make_analysis()
     )
 
-    analyzer = OpenAIIncidentAnalyzer(
+    analyzer = LLMIncidentAnalyzer(
         FakeFactory(
             model
         )
@@ -168,7 +168,7 @@ async def test_analyzer_sends_query_and_evidence_to_model() -> None:
 
 @pytest.mark.asyncio
 async def test_analyzer_requires_evidence() -> None:
-    analyzer = OpenAIIncidentAnalyzer(
+    analyzer = LLMIncidentAnalyzer(
         FakeFactory(
             FakeStructuredModel(
                 make_analysis()
@@ -188,7 +188,7 @@ async def test_analyzer_requires_evidence() -> None:
 
 @pytest.mark.asyncio
 async def test_analyzer_rejects_unexpected_model_output() -> None:
-    analyzer = OpenAIIncidentAnalyzer(
+    analyzer = LLMIncidentAnalyzer(
         FakeFactory(
             FakeStructuredModel(
                 {

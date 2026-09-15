@@ -3,7 +3,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.models.agents import IncidentAnalysis, VerificationResult
 from app.models.retrieval import RetrievedChunk
-from app.services.verification_llm import OpenAIVerifier
+from app.services.verification_llm import LLMVerifier
 
 
 def make_chunk() -> RetrievedChunk:
@@ -91,7 +91,7 @@ def test_verifier_requests_verification_result_schema() -> None:
         model
     )
 
-    OpenAIVerifier(
+    LLMVerifier(
         factory
     )
 
@@ -102,7 +102,7 @@ def test_verifier_requests_verification_result_schema() -> None:
 
 @pytest.mark.asyncio
 async def test_verifier_returns_structured_result() -> None:
-    verifier = OpenAIVerifier(
+    verifier = LLMVerifier(
         FakeFactory(
             FakeStructuredModel(
                 make_verification()
@@ -132,7 +132,7 @@ async def test_verifier_sends_report_analysis_and_evidence() -> None:
         make_verification()
     )
 
-    verifier = OpenAIVerifier(
+    verifier = LLMVerifier(
         FakeFactory(
             model
         )
@@ -199,7 +199,7 @@ async def test_verifier_supports_needs_more_evidence() -> None:
         ],
     )
 
-    verifier = OpenAIVerifier(
+    verifier = LLMVerifier(
         FakeFactory(
             FakeStructuredModel(
                 verification
@@ -227,7 +227,7 @@ async def test_verifier_supports_needs_more_evidence() -> None:
 
 @pytest.mark.asyncio
 async def test_verifier_requires_evidence() -> None:
-    verifier = OpenAIVerifier(
+    verifier = LLMVerifier(
         FakeFactory(
             FakeStructuredModel(
                 make_verification()
@@ -248,7 +248,7 @@ async def test_verifier_requires_evidence() -> None:
 
 @pytest.mark.asyncio
 async def test_verifier_rejects_unexpected_model_output() -> None:
-    verifier = OpenAIVerifier(
+    verifier = LLMVerifier(
         FakeFactory(
             FakeStructuredModel(
                 {

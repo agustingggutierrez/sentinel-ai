@@ -3,7 +3,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.models.agents import IncidentAnalysis, VerificationResult
 from app.models.retrieval import RetrievedChunk
-from app.services.response_llm import OpenAIResponseComposer
+from app.services.response_llm import LLMResponseComposer
 
 
 def make_chunk() -> RetrievedChunk:
@@ -85,7 +85,7 @@ async def test_composer_creates_chat_model() -> None:
         )
     )
 
-    OpenAIResponseComposer(
+    LLMResponseComposer(
         factory
     )
 
@@ -94,7 +94,7 @@ async def test_composer_creates_chat_model() -> None:
 
 @pytest.mark.asyncio
 async def test_composer_returns_text_answer() -> None:
-    composer = OpenAIResponseComposer(
+    composer = LLMResponseComposer(
         FakeFactory(
             FakeChatModel(
                 AIMessage(
@@ -124,7 +124,7 @@ async def test_composer_sends_complete_context() -> None:
         )
     )
 
-    composer = OpenAIResponseComposer(
+    composer = LLMResponseComposer(
         FakeFactory(
             model
         )
@@ -179,7 +179,7 @@ async def test_composer_sends_complete_context() -> None:
 
 @pytest.mark.asyncio
 async def test_composer_requires_evidence() -> None:
-    composer = OpenAIResponseComposer(
+    composer = LLMResponseComposer(
         FakeFactory(
             FakeChatModel(
                 AIMessage(
@@ -203,7 +203,7 @@ async def test_composer_requires_evidence() -> None:
 
 @pytest.mark.asyncio
 async def test_composer_rejects_unexpected_model_output() -> None:
-    composer = OpenAIResponseComposer(
+    composer = LLMResponseComposer(
         FakeFactory(
             FakeChatModel(
                 {
@@ -229,7 +229,7 @@ async def test_composer_rejects_unexpected_model_output() -> None:
 
 @pytest.mark.asyncio
 async def test_composer_rejects_empty_answer() -> None:
-    composer = OpenAIResponseComposer(
+    composer = LLMResponseComposer(
         FakeFactory(
             FakeChatModel(
                 AIMessage(

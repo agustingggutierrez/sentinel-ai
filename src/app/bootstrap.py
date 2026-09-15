@@ -12,11 +12,11 @@ from app.agents.verification import VerificationAgentService
 from app.config.settings import Settings, get_settings
 from app.graph.workflow import build_sentinel_graph
 from app.rag.retrieval import RetrievalService, create_retrieval_service
-from app.services.incident_llm import OpenAIIncidentAnalyzer
+from app.services.incident_llm import LLMIncidentAnalyzer
 from app.services.llm import LLMModelFactory
-from app.services.response_llm import OpenAIResponseComposer
-from app.services.supervisor_llm import OpenAISupervisor
-from app.services.verification_llm import OpenAIVerifier
+from app.services.response_llm import LLMResponseComposer
+from app.services.supervisor_llm import LLMSupervisor
+from app.services.verification_llm import LLMVerifier
 
 
 @dataclass(slots=True)
@@ -55,24 +55,24 @@ async def create_sentinel_runtime(
     )
 
     incident_analyst = IncidentAnalystService(
-        OpenAIIncidentAnalyzer(
+        LLMIncidentAnalyzer(
             llm_factory
         )
     )
 
     verification_agent = VerificationAgentService(
-        OpenAIVerifier(
+        LLMVerifier(
             llm_factory
         )
     )
 
     response_composer = ResponseComposerService(
-        OpenAIResponseComposer(
+        LLMResponseComposer(
             llm_factory
         )
     )
 
-    supervisor = OpenAISupervisor(
+    supervisor = LLMSupervisor(
         llm_factory
     )
 

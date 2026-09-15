@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.models.agents import IncidentAnalysis
 from app.models.retrieval import RetrievedChunk
-from app.services.llm import OpenAIModelFactory
+from app.services.llm import LLMModelFactory
 
 
 class StructuredIncidentModel(Protocol):
@@ -17,12 +17,12 @@ class StructuredIncidentModel(Protocol):
         """Invoke the model asynchronously."""
 
 
-class OpenAIIncidentAnalyzer:
+class LLMIncidentAnalyzer:
     """Analyze security incidents using grounded structured LLM output."""
 
     def __init__(
         self,
-        factory: OpenAIModelFactory,
+        factory: LLMModelFactory,
     ) -> None:
         self.model: StructuredIncidentModel = (
             factory.create_structured_model(
@@ -40,7 +40,7 @@ class OpenAIIncidentAnalyzer:
 
         if not evidence:
             raise ValueError(
-                "OpenAI Incident Analyzer requires evidence."
+                "LLM Incident Analyzer requires evidence."
             )
 
         evidence_context = self._format_evidence(
@@ -115,3 +115,6 @@ class OpenAIIncidentAnalyzer:
         return "\n\n".join(
             sections
         )
+
+
+OpenAIIncidentAnalyzer = LLMIncidentAnalyzer

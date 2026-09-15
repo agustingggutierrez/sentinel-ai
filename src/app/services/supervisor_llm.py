@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.graph.state import SentinelState
 from app.models.agents import SupervisorDecision
-from app.services.llm import OpenAIModelFactory
+from app.services.llm import LLMModelFactory
 
 
 class StructuredSupervisorModel(Protocol):
@@ -17,12 +17,12 @@ class StructuredSupervisorModel(Protocol):
         """Invoke the model asynchronously."""
 
 
-class OpenAISupervisor:
+class LLMSupervisor:
     """Choose the next SentinelAI graph node from the current shared state."""
 
     def __init__(
         self,
-        factory: OpenAIModelFactory,
+        factory: LLMModelFactory,
     ) -> None:
         self.model: StructuredSupervisorModel = (
             factory.create_structured_model(
@@ -146,3 +146,6 @@ class OpenAISupervisor:
             f"retry_count: {state.get('retry_count', 0)}\n"
             f"final_answer: {final_answer_status}"
         )
+
+
+OpenAISupervisor = LLMSupervisor

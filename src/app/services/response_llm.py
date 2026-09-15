@@ -4,7 +4,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from app.models.agents import IncidentAnalysis, VerificationResult
 from app.models.retrieval import RetrievedChunk
-from app.services.llm import OpenAIModelFactory
+from app.services.llm import LLMModelFactory
 
 
 class ChatResponseModel(Protocol):
@@ -17,12 +17,12 @@ class ChatResponseModel(Protocol):
         """Invoke the model asynchronously."""
 
 
-class OpenAIResponseComposer:
+class LLMResponseComposer:
     """Compose a grounded user-facing security operations response."""
 
     def __init__(
         self,
-        factory: OpenAIModelFactory,
+        factory: LLMModelFactory,
     ) -> None:
         self.model: ChatResponseModel = (
             factory.create_chat_model()
@@ -40,7 +40,7 @@ class OpenAIResponseComposer:
 
         if not evidence:
             raise ValueError(
-                "OpenAI Response Composer requires evidence."
+                "LLM Response Composer requires evidence."
             )
 
         evidence_context = self._format_evidence(
@@ -166,3 +166,6 @@ class OpenAIResponseComposer:
         return "\n\n".join(
             sections
         )
+
+
+OpenAIResponseComposer = LLMResponseComposer

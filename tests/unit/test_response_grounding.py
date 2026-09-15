@@ -3,7 +3,7 @@ from langchain_core.messages import AIMessage, SystemMessage
 
 from app.models.agents import IncidentAnalysis, VerificationResult
 from app.models.retrieval import RetrievedChunk
-from app.services.response_llm import OpenAIResponseComposer
+from app.services.response_llm import LLMResponseComposer
 
 
 class FakeChatModel:
@@ -78,7 +78,7 @@ def make_verification() -> VerificationResult:
 async def test_response_composer_enforces_grounding_rules() -> None:
     model = FakeChatModel()
 
-    composer = OpenAIResponseComposer(
+    composer = LLMResponseComposer(
         FakeFactory(
             model
         )

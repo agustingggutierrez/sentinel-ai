@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.models.agents import IncidentAnalysis, VerificationResult
 from app.models.retrieval import RetrievedChunk
-from app.services.llm import OpenAIModelFactory
+from app.services.llm import LLMModelFactory
 
 
 class StructuredVerificationModel(Protocol):
@@ -17,12 +17,12 @@ class StructuredVerificationModel(Protocol):
         """Invoke the model asynchronously."""
 
 
-class OpenAIVerifier:
+class LLMVerifier:
     """Verify incident analysis against retrieved procedural evidence."""
 
     def __init__(
         self,
-        factory: OpenAIModelFactory,
+        factory: LLMModelFactory,
     ) -> None:
         self.model: StructuredVerificationModel = (
             factory.create_structured_model(
@@ -41,7 +41,7 @@ class OpenAIVerifier:
 
         if not evidence:
             raise ValueError(
-                "OpenAI Verifier requires evidence."
+                "LLM Verifier requires evidence."
             )
 
         evidence_context = self._format_evidence(
@@ -154,3 +154,6 @@ class OpenAIVerifier:
         return "\n\n".join(
             sections
         )
+
+
+OpenAIVerifier = LLMVerifier

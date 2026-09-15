@@ -8,7 +8,7 @@ from app.models.agents import (
     VerificationResult,
 )
 from app.models.retrieval import RetrievedChunk
-from app.services.supervisor_llm import OpenAISupervisor
+from app.services.supervisor_llm import LLMSupervisor
 
 
 def make_chunk() -> RetrievedChunk:
@@ -70,7 +70,7 @@ def test_supervisor_requests_structured_decision_schema() -> None:
         )
     )
 
-    OpenAISupervisor(
+    LLMSupervisor(
         factory
     )
 
@@ -81,7 +81,7 @@ def test_supervisor_requests_structured_decision_schema() -> None:
 
 @pytest.mark.asyncio
 async def test_supervisor_returns_structured_decision() -> None:
-    supervisor = OpenAISupervisor(
+    supervisor = LLMSupervisor(
         FakeFactory(
             FakeStructuredModel(
                 make_decision()
@@ -116,7 +116,7 @@ async def test_supervisor_receives_routing_relevant_state() -> None:
         )
     )
 
-    supervisor = OpenAISupervisor(
+    supervisor = LLMSupervisor(
         FakeFactory(
             model
         )
@@ -193,7 +193,7 @@ async def test_supervisor_receives_verification_status() -> None:
         )
     )
 
-    supervisor = OpenAISupervisor(
+    supervisor = LLMSupervisor(
         FakeFactory(
             model
         )
@@ -230,7 +230,7 @@ async def test_supervisor_receives_verification_status() -> None:
 
 @pytest.mark.asyncio
 async def test_supervisor_rejects_unexpected_model_output() -> None:
-    supervisor = OpenAISupervisor(
+    supervisor = LLMSupervisor(
         FakeFactory(
             FakeStructuredModel(
                 {
@@ -262,7 +262,7 @@ async def test_supervisor_prompt_includes_safe_response_routing() -> None:
         )
     )
 
-    supervisor = OpenAISupervisor(
+    supervisor = LLMSupervisor(
         FakeFactory(
             model
         )

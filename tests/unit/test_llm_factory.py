@@ -4,8 +4,8 @@ from pydantic import BaseModel, SecretStr
 import app.services.llm as llm_module
 from app.config.settings import Settings
 from app.services.llm import (
-    OpenAIConfigurationError,
-    OpenAIModelFactory,
+    LLMConfigurationError,
+    LLMModelFactory,
 )
 
 
@@ -43,12 +43,12 @@ def test_factory_rejects_missing_api_key() -> None:
         openai_api_key=None,
     )
 
-    factory = OpenAIModelFactory(
+    factory = LLMModelFactory(
         settings
     )
 
     with pytest.raises(
-        OpenAIConfigurationError,
+        LLMConfigurationError,
         match="OPENAI_API_KEY is required",
     ):
         factory.create_chat_model()
@@ -61,12 +61,12 @@ def test_factory_rejects_blank_api_key() -> None:
         openai_api_key=SecretStr("   "),
     )
 
-    factory = OpenAIModelFactory(
+    factory = LLMModelFactory(
         settings
     )
 
     with pytest.raises(
-        OpenAIConfigurationError,
+        LLMConfigurationError,
         match="cannot be blank",
     ):
         factory.create_chat_model()
@@ -90,7 +90,7 @@ def test_factory_uses_configured_model_and_secret(
         openai_model="gpt-5.6-luna",
     )
 
-    factory = OpenAIModelFactory(
+    factory = LLMModelFactory(
         settings
     )
 
@@ -126,7 +126,7 @@ def test_factory_creates_strict_structured_output(
         ),
     )
 
-    factory = OpenAIModelFactory(
+    factory = LLMModelFactory(
         settings
     )
 
