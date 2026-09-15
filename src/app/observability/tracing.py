@@ -53,20 +53,26 @@ def sentinel_tracing_context(
         settings
     )
 
-    with tracing_context(
-        project_name=settings.langsmith_project,
-        tags=[
-            "sentinel-ai",
-            settings.app_env,
-        ],
-        metadata={
-            "thread_id": thread_id,
-            "llm_provider": settings.llm_provider,
-        },
-        enabled=settings.langsmith_tracing,
-        client=client,
-    ):
-        yield
+    try:
+        with tracing_context(
+            project_name=settings.langsmith_project,
+            tags=[
+                "sentinel-ai",
+                settings.app_env,
+            ],
+            metadata={
+                "thread_id": thread_id,
+                "llm_provider": settings.llm_provider,
+            },
+            enabled=settings.langsmith_tracing,
+            client=client,
+        ):
+            yield
+    finally:
+        if client is not None:
+            client.flush(
+                timeout=10,
+            )
 
 
 def _trace_inputs(

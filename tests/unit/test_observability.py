@@ -123,3 +123,37 @@ async def test_traced_graph_adds_trace_id(
     )
 
     assert result["trace_id"] == "trace-unit-123"
+
+def test_tracing_context_flushes_client(
+    monkeypatch,
+) -> None:
+    settings = Settings(
+        _env_file=None,
+        langsmith_tracing=True,
+        langsmith_api_key="test-key",
+    )
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.flush_calls = []
+
+        def flush(
+            self,
+            timeout=None,
+        ) -> None:
+            self.flush_calls.append(timeout)
+
+    fake_client = FakeClient()
+
+    monkeypatch.setattr(
+        "app.observability.tracing._build_langsmith_client",
+        lambda settings: fake_client,
+    )
+
+    with sentinel_tracing_context(
+        settings=settings,
+        thread_id="flush-test",
+    ):
+        pass
+
+    assert fake_client.flush_calls == [10]
