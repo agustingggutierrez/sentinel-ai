@@ -1,0 +1,38 @@
+services:
+  sentinel-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    env_file:
+      - .env
+
+    environment:
+      APP_HOST: 0.0.0.0
+      QDRANT_MODE: local
+      QDRANT_LOCAL_PATH: /app/.qdrant
+      CHECKPOINT_DB_PATH: /app/.sentinel/checkpoints.sqlite
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - sentinel_qdrant:/app/.qdrant
+      - sentinel_checkpoints:/app/.sentinel
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  sentinel_qdrant:
+  sentinel_checkpoints:
