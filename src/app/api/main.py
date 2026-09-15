@@ -17,10 +17,16 @@ from app.graph.state import create_initial_state
 from app.models.errors import ErrorDetail, ErrorResponse
 from app.models.query import QueryRequest
 from app.models.response import QueryMetadata, QueryResponse
+from app.observability.logging import (
+    configure_logging,
+    get_logger,
+)
 from app.observability.tracing import (
     invoke_traced_graph,
     sentinel_tracing_context,
 )
+
+logger = get_logger("api")
 
 
 @asynccontextmanager
@@ -29,11 +35,44 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     settings = get_settings()
 
-    async with create_sentinel_runtime(
+    configure_logging(
         settings
-    ) as runtime:
-        app.state.runtime = runtime
-        yield
+    )
+
+    logger.info(
+        "Starting SentinelAI application.",
+        extra={
+            "event": "application_starting",
+            "llm_provider": settings.llm_provider,
+            "app_env": settings.app_env,
+        },
+    )
+
+    try:
+        async with create_sentinel_runtime(
+            settings
+        ) as runtime:
+            app.state.runtime = runtime
+
+            logger.info(
+                "SentinelAI application ready.",
+                extra={
+                    "event": "application_ready",
+                    "llm_provider": settings.llm_provider,
+                    "app_env": settings.app_env,
+                },
+            )
+
+            yield
+    finally:
+        logger.info(
+            "Stopping SentinelAI application.",
+            extra={
+                "event": "application_stopping",
+                "llm_provider": settings.llm_provider,
+                "app_env": settings.app_env,
+            },
+        )
 
 
 app = FastAPI(
@@ -53,6 +92,16 @@ async def sentinel_api_error_handler(
     exc: SentinelAPIError,
 ) -> JSONResponse:
     """Convert controlled SentinelAI failures into stable API responses."""
+
+    logger.error(
+        "SentinelAI API error.",
+        extra={
+            "event": "api_error",
+            "thread_id": exc.thread_id,
+            "trace_id": exc.trace_id,
+            "error_code": exc.error_code,
+        },
+    )
 
     payload = ErrorResponse(
         error=ErrorDetail(
@@ -133,6 +182,16 @@ async def query_sentinel(
 
     thread_id = initial_state["thread_id"]
 
+    logger.info(
+        "Processing SentinelAI query.",
+        extra={
+            "event": "query_started",
+            "thread_id": thread_id,
+            "llm_provider": runtime.settings.llm_provider,
+            "app_env": runtime.settings.app_env,
+        },
+    )
+
     config = {
         "configurable": {
             "thread_id": thread_id,
@@ -157,6 +216,15 @@ async def query_sentinel(
     except SentinelAPIError:
         raise
     except Exception as exc:
+        logger.exception(
+            "SentinelAI workflow execution failed.",
+            extra={
+                "event": "workflow_failed",
+                "thread_id": thread_id,
+                "error_code": "workflow_failed",
+            },
+        )
+
         raise WorkflowExecutionError(
             thread_id=thread_id,
         ) from exc
@@ -192,6 +260,25 @@ async def query_sentinel(
         [],
     )
 
+    trace_id = result.get(
+        "trace_id"
+    )
+
+    logger.info(
+        "SentinelAI query completed.",
+        extra={
+            "event": "query_completed",
+            "thread_id": result.get(
+                "thread_id",
+                thread_id,
+            ),
+            "trace_id": trace_id,
+            "duration_ms": duration_ms,
+            "llm_provider": runtime.settings.llm_provider,
+            "app_env": runtime.settings.app_env,
+        },
+    )
+
     return QueryResponse(
         answer=final_answer,
         thread_id=result.get(
@@ -213,7 +300,5 @@ async def query_sentinel(
             verification_status=verification_status,
             duration_ms=duration_ms,
         ),
-        trace_id=result.get(
-            "trace_id"
-        ),
+        trace_id=trace_id,
     )
